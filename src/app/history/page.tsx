@@ -13,37 +13,25 @@ export default function HistoryPage() {
   }, [filter]);
 
   const fetchTransactions = async () => {
-    try {
-      let query = supabase.from('transactions').select('*').order('date', { ascending: false });
-      if (filter !== 'ALL') query = query.eq('type', filter);
-      const { data, error } = await query;
-      if (error) throw error;
-      if (data) setTransactions(data);
-    } catch(e) {
-       let mock = [
-         { id: '1', concept: 'Venta del día', category: 'Ventas', type: 'INCOME', amount: 450, date: new Date().toISOString(), payment_method: 'EFECTIVO' },
-         { id: '2', concept: 'Pago de basura', category: 'Servicios', type: 'EXPENSE', amount: 50, date: new Date().toISOString(), payment_method: 'EFECTIVO' }
-       ];
-       if (filter !== 'ALL') mock = mock.filter(m => m.type === filter);
-       setTransactions(mock);
-    }
+    let query = supabase.from('transactions').select('*').order('date', { ascending: false });
+    if (filter !== 'ALL') query = query.eq('type', filter);
+    const { data, error } = await query;
+    if (data) setTransactions(data);
+    else if (error) console.error("Error al cargar historial:", error.message);
   };
 
   const handleDelete = async (id: string) => {
     if (confirm('¿Estás seguro de eliminar este registro?')) {
-      try {
-        await supabase.from('transactions').delete().eq('id', id);
-        fetchTransactions();
-      } catch(e) {
-        alert('Modo local (Sin BD conectada): Registro simulado borrado.');
-      }
+      const { error } = await supabase.from('transactions').delete().eq('id', id);
+      if (error) alert("Error: " + error.message);
+      else fetchTransactions();
     }
   };
 
   const exportCSV = () => {
-    const headers = ['Fecha,Tipo,Monto,Concepto,Categoria,Metodo_Pago\n'];
+    const headers = ['Fecha,Tipo,Monto,Concepto,Categoria,Metodo_Pago,Frecuencia\n'];
     const csvContent = transactions.map(t => {
-      return `${new Date(t.date).toISOString().split('T')[0]},${t.type},${t.amount},"${t.concept}","${t.category}",${t.payment_method}`;
+      return `${new Date(t.date).toISOString().split('T')[0]},${t.type},${t.amount},"${t.concept}","${t.category}",${t.payment_method},${t.frequency}`;
     }).join('\n');
     const blob = new Blob([headers + csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
@@ -54,7 +42,7 @@ export default function HistoryPage() {
   };
 
   return (
-    <div className="p-4">
+    <div className="p-4 pb-24">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Historial</h1>
         <button onClick={exportCSV} className="text-blue-600 flex items-center text-sm font-medium">
@@ -65,7 +53,7 @@ export default function HistoryPage() {
         {['ALL', 'INCOME', 'EXPENSE'].map(f => (
           <button 
             key={f} onClick={() => setFilter(f)}
-            className={`px-4 py-1.5 rounded-full text-sm whitespace-nowrap ${filter === f ? 'bg-gray-800 text-white' : 'bg-gray-200 text-gray-700'}`}
+            className={`px-4 py-1.5 rounded-full text-sm whitespace-nowrap ${filter === f ? 'bg-black text-white' : 'bg-gray-200 text-gray-700'}`}
           >
             {f === 'ALL' ? 'Todos' : f === 'INCOME' ? 'Ingresos' : 'Gastos'}
           </button>
@@ -75,8 +63,8 @@ export default function HistoryPage() {
         {transactions.map(t => (
           <div key={t.id} className="flex justify-between items-center p-3 bg-white border rounded-lg shadow-sm">
             <div className="flex-1">
-              <p className="font-semibold text-sm">{t.concept}</p>
-              <p className="text-xs text-gray-500">{new Date(t.date).toLocaleDateString()} • {t.payment_method}</p>
+              <p className="font-semibold text-sm">{t.concept} {t.frequency && t.frequency !== 'DIA' && <span className="text-[10px] bg-black text-white px-1 py-0.5 rounded ml-1">x {t.frequency}</span>}</p>
+              <p className="text-xs text-gray-500">{new Date(t.date).toLocaleDateString()} • {t.category} • {t.payment_method}</p>
             </div>
             <div className="text-right flex items-center gap-3">
               <p className={`font-bold ${t.type === 'INCOME' ? 'text-green-600' : 'text-red-600'}`}>

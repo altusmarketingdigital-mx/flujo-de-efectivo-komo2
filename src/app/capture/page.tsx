@@ -10,25 +10,37 @@ export default function CapturePage() {
   const [frequency, setFrequency] = useState('DIA');
   const [paymentMethod, setPaymentMethod] = useState('EFECTIVO');
   
-  const [dbCategories, setDbCategories] = useState<any[]>([{id:1, name: 'Servicios'}, {id:2, name: 'Personal'}]);
+  const [dbCategories, setDbCategories] = useState<any[]>([]);
+
+  useEffect(() => {
+    fetchCategories();
+  }, [type]);
+
+  const fetchCategories = async () => {
+    const { data, error } = await supabase.from('categories').select('*').eq('type', type);
+    if (data) setDbCategories(data);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    try {
-      await supabase.from('transactions').insert([{
-        type, amount: parseFloat(amount), concept, category, frequency, payment_method: paymentMethod
-      }]);
-    } catch(e) {}
-    alert('Registro guardado exitosamente');
-    setAmount(''); setConcept(''); setCategory(''); setFrequency('DIA');
+    const { data, error } = await supabase.from('transactions').insert([{
+      type, amount: parseFloat(amount), concept, category, frequency, payment_method: paymentMethod
+    }]);
+
+    if (error) {
+      alert('Error al guardar: ' + error.message);
+    } else {
+      alert('Registro guardado exitosamente');
+      setAmount(''); setConcept(''); setCategory(''); setFrequency('DIA');
+    }
   };
 
   return (
     <div className="p-4 pb-24">
       <h1 className="text-2xl font-bold mb-6 text-center">Nuevo Registro</h1>
       <div className="flex bg-gray-100 p-1 rounded-lg mb-6">
-        <button className={`flex-1 py-2 rounded-md font-semibold ${type === 'EXPENSE' ? 'bg-white shadow text-red-600' : 'text-gray-500'}`} onClick={() => setType('EXPENSE')}>Gasto</button>
-        <button className={`flex-1 py-2 rounded-md font-semibold ${type === 'INCOME' ? 'bg-white shadow text-green-600' : 'text-gray-500'}`} onClick={() => setType('INCOME')}>Ingreso</button>
+        <button type="button" className={`flex-1 py-2 rounded-md font-semibold ${type === 'EXPENSE' ? 'bg-white shadow text-red-600' : 'text-gray-500'}`} onClick={() => setType('EXPENSE')}>Gasto</button>
+        <button type="button" className={`flex-1 py-2 rounded-md font-semibold ${type === 'INCOME' ? 'bg-white shadow text-green-600' : 'text-gray-500'}`} onClick={() => setType('INCOME')}>Ingreso</button>
       </div>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div>

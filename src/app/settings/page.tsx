@@ -8,6 +8,9 @@ export default function SettingsPage() {
   const [newExp, setNewExp] = useState('');
   const [newInc, setNewInc] = useState('');
 
+  // DEBUG INFO
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'URL NO ENCONTRADA';
+
   useEffect(() => {
     fetchCats();
   }, []);
@@ -74,6 +77,10 @@ export default function SettingsPage() {
             </li>
           ))}
         </ul>
+      </div>
+
+      <div className="mt-10 p-3 bg-gray-100 rounded-lg text-xs text-gray-400 break-all">
+        Debug Info URL: {supabaseUrl}
       </div>
     </div>
   );

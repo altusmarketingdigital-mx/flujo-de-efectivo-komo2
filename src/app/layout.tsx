@@ -2,8 +2,28 @@ import './globals.css'
 import { Inter } from 'next/font/google'
 import Navbar from '@/components/Navbar'
 import { Toaster } from 'react-hot-toast'
+import type { Metadata, Viewport } from 'next'
 
 const inter = Inter({ subsets: ['latin'] })
+
+export const viewport: Viewport = {
+  themeColor: '#0f172a',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+}
+
+export const metadata: Metadata = {
+  title: 'Flujo de Efectivo',
+  description: 'Sistema ejecutivo de control de finanzas',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Finanzas',
+  },
+}
 
 export default function RootLayout({
   children,

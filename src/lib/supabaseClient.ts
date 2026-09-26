@@ -8,7 +8,9 @@ if (!url.startsWith('http')) {
   url = 'https://' + url;
 }
 
-let key = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'fake-key').trim();
+// Check both possible names the user might have used
+const envKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'fake-key';
+let key = envKey.trim();
 if (key.includes('=')) {
   key = key.split('=').pop()?.trim() || key;
 }

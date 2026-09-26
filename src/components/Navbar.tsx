@@ -6,6 +6,8 @@ import { Home, PlusSquare, List, Settings } from 'lucide-react';
 export default function Navbar() {
   const pathname = usePathname();
   
+  if (pathname === '/login') return null;
+
   return (
     <nav className="fixed bottom-0 w-full max-w-md mx-auto bg-white border-t border-slate-200 left-0 right-0 z-50">
       <div className="flex justify-around items-center h-16 px-2">

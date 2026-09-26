@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 export default function CapturePage() {
   const [type, setType] = useState<'EXPENSE' | 'INCOME'>('EXPENSE');
   const [amount, setAmount] = useState('');
+  const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [concept, setConcept] = useState('');
   const [category, setCategory] = useState('');
   const [frequency, setFrequency] = useState('DIA');
@@ -24,18 +25,26 @@ export default function CapturePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!amount || !concept || !category) return toast.error("Información incompleta");
+    if (!amount || !concept || !category || !date) return toast.error("Información incompleta");
     
     const toastId = toast.loading('Procesando...');
+    
+    // Convert YYYY-MM-DD to ISO string to ensure it's saved properly as TIMESTAMPTZ
+    const fullDate = new Date(date + 'T12:00:00Z').toISOString();
+
     const { error } = await supabase.from('transactions').insert([{
-      type, amount: parseFloat(amount), concept, category, frequency, payment_method: paymentMethod
+      type, amount: parseFloat(amount), concept, category, frequency, payment_method: paymentMethod, date: fullDate
     }]);
 
     if (error) {
       toast.error('Error de sistema: ' + error.message, { id: toastId });
     } else {
       toast.success('Entrada registrada', { id: toastId });
-      setAmount(''); setConcept(''); setCategory(''); setFrequency('DIA');
+      setAmount(''); 
+      setConcept(''); 
+      setCategory(''); 
+      setFrequency('DIA');
+      setDate(new Date().toISOString().split('T')[0]);
     }
   };
 
@@ -79,17 +88,26 @@ export default function CapturePage() {
           </div>
 
           <div className="space-y-5">
-            <div>
-              <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 ml-1">Concepto</label>
-              <input 
-                type="text" required 
-                className="w-full p-4 bg-white border border-slate-200 focus:border-slate-900 focus:ring-0 rounded-lg text-sm transition-colors text-slate-900" 
-                placeholder="Ej. Nómina, Factura #102..."
-                value={concept} onChange={(e) => setConcept(e.target.value)} 
-              />
-            </div>
-
             <div className="grid grid-cols-2 gap-4">
+              <div className="col-span-2">
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 ml-1">Fecha del Movimiento</label>
+                <input 
+                  type="date" required 
+                  className="w-full p-4 bg-white border border-slate-200 focus:border-slate-900 focus:ring-0 rounded-lg text-sm transition-colors text-slate-900" 
+                  value={date} onChange={(e) => setDate(e.target.value)} 
+                />
+              </div>
+              
+              <div className="col-span-2">
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 ml-1">Concepto</label>
+                <input 
+                  type="text" required 
+                  className="w-full p-4 bg-white border border-slate-200 focus:border-slate-900 focus:ring-0 rounded-lg text-sm transition-colors text-slate-900" 
+                  placeholder="Ej. Nómina, Factura #102..."
+                  value={concept} onChange={(e) => setConcept(e.target.value)} 
+                />
+              </div>
+
               <div>
                 <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-2 ml-1">Clasificación</label>
                 <select required className="w-full p-4 bg-white border border-slate-200 focus:border-slate-900 focus:ring-0 rounded-lg text-sm transition-colors text-slate-900 appearance-none" value={category} onChange={(e) => setCategory(e.target.value)}>

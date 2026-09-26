@@ -1,40 +1,37 @@
+'use client'
+import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 
-export const revalidate = 0;
+export default function Home() {
+  const [report, setReport] = useState('WEEK');
+  const [data, setData] = useState<any[]>([]);
 
-export default async function Home() {
-  let data = null;
-  
-  try {
-    const res = await supabase.from('transactions').select('*').order('date', { ascending: false });
-    data = res.data;
-  } catch (e) {
-    console.log('Modo local');
-  }
+  useEffect(() => {
+    fetchData();
+  }, [report]);
 
-  let income = 0;
-  let expense = 0;
+  const fetchData = async () => {
+    const { data: txs } = await supabase.from('transactions').select('*').order('date', { ascending: false });
+    if (txs) setData(txs);
+  };
 
-  if (data && data.length > 0) {
-    data.forEach((t: any) => {
-      if (t.type === 'INCOME') income += Number(t.amount);
-      if (t.type === 'EXPENSE') expense += Number(t.amount);
-    });
-  } else {
-    data = [
-      { id: '1', concept: 'Venta del día', category: 'Ventas', type: 'INCOME', amount: 450, date: new Date().toISOString() },
-      { id: '2', concept: 'Pago de basura', category: 'Servicios', type: 'EXPENSE', amount: 50, date: new Date().toISOString() }
-    ];
-    income = 450;
-    expense = 50;
-  }
-
+  let income = 0; let expense = 0;
+  data.forEach(t => {
+    if (t.type === 'INCOME') income += Number(t.amount);
+    if (t.type === 'EXPENSE') expense += Number(t.amount);
+  });
   const balance = income - expense;
 
   return (
-    <div className="p-4">
-      <h1 className="text-2xl font-bold mb-6">Resumen Financiero</h1>
+    <div className="p-4 pb-24">
+      <h1 className="text-2xl font-bold mb-4">Resumen Financiero</h1>
       
+      <div className="flex bg-gray-100 p-1 rounded-lg mb-6 text-sm">
+        <button onClick={() => setReport('WEEK')} className={`flex-1 py-1.5 rounded-md font-semibold ${report === 'WEEK' ? 'bg-black text-white shadow' : 'text-gray-500'}`}>Semana</button>
+        <button onClick={() => setReport('MONTH')} className={`flex-1 py-1.5 rounded-md font-semibold ${report === 'MONTH' ? 'bg-black text-white shadow' : 'text-gray-500'}`}>Mes</button>
+        <button onClick={() => setReport('YEAR')} className={`flex-1 py-1.5 rounded-md font-semibold ${report === 'YEAR' ? 'bg-black text-white shadow' : 'text-gray-500'}`}>Año</button>
+      </div>
+
       <div className="grid grid-cols-2 gap-4 mb-6">
         <div className="bg-green-50 p-4 rounded-xl border border-green-100">
           <p className="text-sm text-green-600 font-medium">Ingresos</p>
@@ -53,11 +50,11 @@ export default async function Home() {
 
       <h2 className="text-xl font-bold mb-4">Últimos Movimientos</h2>
       <div className="space-y-3">
-        {data.slice(0, 5).map((t: any) => (
+        {data.slice(0, 5).map(t => (
           <div key={t.id} className="flex justify-between items-center p-3 bg-white border rounded-lg shadow-sm">
             <div>
-              <p className="font-semibold">{t.concept}</p>
-              <p className="text-xs text-gray-500">{t.category} • {new Date(t.date).toLocaleDateString()}</p>
+              <p className="font-semibold">{t.concept} {t.frequency && t.frequency !== 'DIA' && <span className="text-[10px] bg-black text-white px-1 py-0.5 rounded ml-1">x {t.frequency}</span>}</p>
+              <p className="text-xs text-gray-500">{new Date(t.date).toLocaleDateString()} • {t.category}</p>
             </div>
             <p className={`font-bold ${t.type === 'INCOME' ? 'text-green-600' : 'text-red-600'}`}>
               {t.type === 'INCOME' ? '+' : '-'}${Number(t.amount).toFixed(2)}

@@ -22,15 +22,20 @@ export default function SettingsPage() {
 
   const addCat = async (type: string, name: string, setInput: any) => {
     if (!name.trim()) return;
-    await supabase.from('categories').insert([{ type, name }]);
-    setInput('');
-    fetchCats();
+    const { error } = await supabase.from('categories').insert([{ type, name }]);
+    if (error) {
+      alert("Error al guardar categoría: " + error.message);
+    } else {
+      setInput('');
+      fetchCats();
+    }
   };
 
   const delCat = async (id: string) => {
     if (confirm('¿Eliminar categoría?')) {
-      await supabase.from('categories').delete().eq('id', id);
-      fetchCats();
+      const { error } = await supabase.from('categories').delete().eq('id', id);
+      if (error) alert("Error al eliminar: " + error.message);
+      else fetchCats();
     }
   };
 

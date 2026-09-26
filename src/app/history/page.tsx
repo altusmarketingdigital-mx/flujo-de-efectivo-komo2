@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { Download, Trash2 } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 export default function HistoryPage() {
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -17,14 +18,17 @@ export default function HistoryPage() {
     if (filter !== 'ALL') query = query.eq('type', filter);
     const { data, error } = await query;
     if (data) setTransactions(data);
-    else if (error) console.error("Error al cargar historial:", error.message);
+    else if (error) toast.error("Error al cargar historial: " + error.message);
   };
 
   const handleDelete = async (id: string) => {
     if (confirm('¿Estás seguro de eliminar este registro?')) {
       const { error } = await supabase.from('transactions').delete().eq('id', id);
-      if (error) alert("Error: " + error.message);
-      else fetchTransactions();
+      if (error) toast.error("Error: " + error.message);
+      else {
+        toast.success("Registro eliminado");
+        fetchTransactions();
+      }
     }
   };
 
@@ -39,6 +43,7 @@ export default function HistoryPage() {
     a.setAttribute('href', url);
     a.setAttribute('download', 'historial_finanzas.csv');
     a.click();
+    toast.success("Descarga de CSV iniciada");
   };
 
   return (

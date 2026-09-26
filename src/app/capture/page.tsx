@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import toast from 'react-hot-toast';
 
 export default function CapturePage() {
   const [type, setType] = useState<'EXPENSE' | 'INCOME'>('EXPENSE');
@@ -28,9 +29,9 @@ export default function CapturePage() {
     }]);
 
     if (error) {
-      alert('Error al guardar: ' + error.message);
+      toast.error('Error al guardar: ' + error.message);
     } else {
-      alert('Registro guardado exitosamente');
+      toast.success('Registro guardado exitosamente');
       setAmount(''); setConcept(''); setCategory(''); setFrequency('DIA');
     }
   };

@@ -21,6 +21,7 @@
     "postcss": "^8.5.28",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
+    "react-hot-toast": "^2.6.1",
     "tailwindcss": "^4.3.3",
     "typescript": "^6.0.3"
   },

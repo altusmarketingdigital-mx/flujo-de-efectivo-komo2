@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
+import toast from 'react-hot-toast';
 
 export default function SettingsPage() {
   const [expenseCats, setExpenseCats] = useState<any[]>([]);
@@ -27,8 +28,9 @@ export default function SettingsPage() {
     if (!name.trim()) return;
     const { error } = await supabase.from('categories').insert([{ type, name }]);
     if (error) {
-      alert("Error al guardar categoría: " + error.message);
+      toast.error("Error al guardar: " + error.message);
     } else {
+      toast.success("Categoría agregada");
       setInput('');
       fetchCats();
     }
@@ -37,8 +39,11 @@ export default function SettingsPage() {
   const delCat = async (id: string) => {
     if (confirm('¿Eliminar categoría?')) {
       const { error } = await supabase.from('categories').delete().eq('id', id);
-      if (error) alert("Error al eliminar: " + error.message);
-      else fetchCats();
+      if (error) toast.error("Error al eliminar: " + error.message);
+      else {
+        toast.success("Categoría eliminada");
+        fetchCats();
+      }
     }
   };
 

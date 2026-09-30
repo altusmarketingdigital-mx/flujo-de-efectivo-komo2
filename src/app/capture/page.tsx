@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import toast from 'react-hot-toast';
-import { Upload } from 'lucide-react';
+import { Upload, X, CheckCircle2 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 export default function CapturePage() {
@@ -16,6 +16,8 @@ export default function CapturePage() {
   
   const [dbCategories, setDbCategories] = useState<any[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const [previewData, setPreviewData] = useState<any[] | null>(null);
 
   useEffect(() => {
     fetchCategories();
@@ -65,7 +67,8 @@ export default function CapturePage() {
         const data = XLSX.utils.sheet_to_json(ws);
         
         if (data.length === 0) {
-          return toast.error("El archivo está vacío o no tiene el formato correcto", { id: toastId });
+          toast.dismiss(toastId);
+          return toast.error("El archivo está vacío o no tiene el formato correcto");
         }
 
         const formattedTxs = data.map((row: any) => {
@@ -78,7 +81,6 @@ export default function CapturePage() {
             dateStr = new Date(stringDate + (stringDate.includes('T') ? '' : 'T12:00:00Z')).toISOString();
           }
 
-          // Force all imported records to be EXPENSE since we are in the expenses section
           const parsedType = 'EXPENSE';
 
           return {
@@ -92,18 +94,31 @@ export default function CapturePage() {
           };
         });
 
-        // Batch insert
-        const { error } = await supabase.from('transactions').insert(formattedTxs);
-        if (error) throw error;
+        toast.dismiss(toastId);
+        setPreviewData(formattedTxs);
         
-        toast.success(`¡${formattedTxs.length} gastos importados con éxito!`, { id: toastId });
       } catch (err: any) {
-        toast.error("Error procesando Excel: " + err.message, { id: toastId });
+        toast.dismiss(toastId);
+        toast.error("Error procesando Excel: " + err.message);
       }
       
       if (fileInputRef.current) fileInputRef.current.value = '';
     };
     reader.readAsBinaryString(file);
+  };
+
+  const processBulkImport = async () => {
+    if (!previewData) return;
+    const toastId = toast.loading('Guardando registros en la nube...');
+    try {
+      const { error } = await supabase.from('transactions').insert(previewData);
+      if (error) throw error;
+      
+      toast.success(`¡${previewData.length} gastos importados con éxito!`, { id: toastId });
+      setPreviewData(null);
+    } catch (error: any) {
+      toast.error('Error al guardar: ' + error.message, { id: toastId });
+    }
   };
 
   return (
@@ -231,6 +246,69 @@ export default function CapturePage() {
           </div>
         </form>
       </div>
+
+      {/* PREVIEW MODAL */}
+      {previewData && (
+        <div className="fixed inset-0 bg-slate-900/80 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[85vh]">
+            <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+              <div>
+                <h2 className="text-sm font-bold text-slate-900 uppercase tracking-widest">Validación de Datos</h2>
+                <p className="text-[10px] text-slate-500 uppercase tracking-widest mt-1">Revisión previa a la carga</p>
+              </div>
+              <button onClick={() => setPreviewData(null)} className="text-slate-400 hover:text-slate-900 p-2 bg-slate-200 rounded-full transition-colors">
+                <X size={16} strokeWidth={3} />
+              </button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto">
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4">
+                  <p className="text-[9px] font-bold text-emerald-600 uppercase tracking-widest mb-1">Registros Leídos</p>
+                  <p className="text-2xl font-light text-emerald-900">{previewData.length}</p>
+                </div>
+                <div className="bg-slate-50 border border-slate-100 rounded-xl p-4">
+                  <p className="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-1">Total ($)</p>
+                  <p className="text-xl font-light text-slate-900">${previewData.reduce((acc, curr) => acc + curr.amount, 0).toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
+                </div>
+              </div>
+
+              <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Vista Previa (Primeros 3)</h3>
+              <div className="space-y-3">
+                {previewData.slice(0, 3).map((row, idx) => (
+                  <div key={idx} className="bg-white border border-slate-200 p-3 rounded-xl flex justify-between items-center shadow-sm">
+                    <div>
+                      <p className="text-xs font-bold text-slate-900">{row.concept}</p>
+                      <p className="text-[9px] text-slate-500 uppercase tracking-widest mt-1">{row.category} • {row.date.split('T')[0]}</p>
+                    </div>
+                    <p className="text-sm font-bold text-rose-600">-${row.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}</p>
+                  </div>
+                ))}
+                {previewData.length > 3 && (
+                  <p className="text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest pt-2">
+                    ... y {previewData.length - 3} registros más.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-slate-100 bg-white">
+              <button 
+                onClick={processBulkImport}
+                className="w-full py-4 bg-emerald-600 text-white font-bold tracking-widest uppercase text-xs rounded-xl hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20"
+              >
+                <CheckCircle2 size={18} /> Procesar {previewData.length} Gastos
+              </button>
+              <button 
+                onClick={() => setPreviewData(null)}
+                className="w-full py-3 mt-3 text-slate-500 font-bold tracking-widest uppercase text-[10px] rounded-xl hover:bg-slate-100 transition-colors"
+              >
+                Cancelar Carga
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

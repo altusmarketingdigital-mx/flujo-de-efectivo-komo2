@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabaseClient';
 import toast from 'react-hot-toast';
 
 export default function CapturePage() {
-  const [type, setType] = useState<'EXPENSE' | 'INCOME'>('EXPENSE');
+  const [type, setType] = useState<'EXPENSE' | 'INCOME' | 'RECEIVABLE'>('EXPENSE');
   const [amount, setAmount] = useState('');
   const [date, setDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [concept, setConcept] = useState('');
@@ -29,7 +29,6 @@ export default function CapturePage() {
     
     const toastId = toast.loading('Procesando...');
     
-    // Convert YYYY-MM-DD to ISO string to ensure it's saved properly as TIMESTAMPTZ
     const fullDate = new Date(date + 'T12:00:00Z').toISOString();
 
     const { error } = await supabase.from('transactions').insert([{
@@ -58,17 +57,24 @@ export default function CapturePage() {
         <div className="flex bg-slate-200/50 p-1 rounded-md mb-8">
           <button 
             type="button" 
-            className={`flex-1 py-2.5 text-xs font-bold uppercase tracking-widest transition-colors rounded ${type === 'EXPENSE' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`} 
+            className={`flex-1 py-2 text-[10px] font-bold uppercase tracking-widest transition-colors rounded ${type === 'EXPENSE' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`} 
             onClick={() => setType('EXPENSE')}
           >
             Egreso
           </button>
           <button 
             type="button" 
-            className={`flex-1 py-2.5 text-xs font-bold uppercase tracking-widest transition-colors rounded ${type === 'INCOME' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`} 
+            className={`flex-1 py-2 text-[10px] font-bold uppercase tracking-widest transition-colors rounded ${type === 'INCOME' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`} 
             onClick={() => setType('INCOME')}
           >
             Ingreso
+          </button>
+          <button 
+            type="button" 
+            className={`flex-1 py-2 text-[10px] font-bold uppercase tracking-widest transition-colors rounded ${type === 'RECEIVABLE' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`} 
+            onClick={() => setType('RECEIVABLE')}
+          >
+            X Cobrar
           </button>
         </div>
 

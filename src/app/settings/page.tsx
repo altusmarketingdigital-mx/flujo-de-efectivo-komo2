@@ -7,8 +7,11 @@ import { X } from 'lucide-react';
 export default function SettingsPage() {
   const [expenseCats, setExpenseCats] = useState<any[]>([]);
   const [incomeCats, setIncomeCats] = useState<any[]>([]);
+  const [recCats, setRecCats] = useState<any[]>([]);
+  
   const [newExp, setNewExp] = useState('');
   const [newInc, setNewInc] = useState('');
+  const [newRec, setNewRec] = useState('');
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'URL NO ENCONTRADA';
 
@@ -21,6 +24,7 @@ export default function SettingsPage() {
     if (data) {
       setExpenseCats(data.filter(c => c.type === 'EXPENSE'));
       setIncomeCats(data.filter(c => c.type === 'INCOME'));
+      setRecCats(data.filter(c => c.type === 'RECEIVABLE'));
     }
   };
 
@@ -83,6 +87,27 @@ export default function SettingsPage() {
                 <button onClick={() => delCat(c.id)} className="text-slate-300 hover:text-rose-500 transition-colors"><X size={16} strokeWidth={2.5}/></button>
               </div>
             ))}
+          </div>
+        </div>
+
+        <div className="mb-8">
+          <h2 className="text-[10px] font-bold text-amber-500 uppercase tracking-widest mb-3">Pedidos X Cobrar</h2>
+          <div className="flex gap-2 mb-4">
+            <input type="text" placeholder="Ej. Clientes Corporativos..." className="flex-1 p-3 text-sm border border-slate-200 rounded-lg focus:border-slate-900 focus:ring-0 transition-colors" value={newRec} onChange={e => setNewRec(e.target.value)} />
+            <button onClick={() => addCat('RECEIVABLE', newRec, setNewRec)} className="px-5 bg-slate-900 text-white rounded-lg text-xs font-bold uppercase tracking-widest hover:bg-slate-800 transition-colors">Añadir</button>
+          </div>
+          <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+            {recCats.map((c, idx) => (
+              <div key={c.id} className={`flex justify-between items-center p-3.5 ${idx !== recCats.length - 1 ? 'border-b border-slate-100' : ''}`}>
+                <span className="text-sm font-medium text-slate-700">{c.name}</span>
+                <button onClick={() => delCat(c.id)} className="text-slate-300 hover:text-rose-500 transition-colors"><X size={16} strokeWidth={2.5}/></button>
+              </div>
+            ))}
+            {recCats.length === 0 && (
+              <div className="text-center py-4 text-slate-400 text-[10px] uppercase tracking-widest">
+                Sin categorías agregadas
+              </div>
+            )}
           </div>
         </div>
 

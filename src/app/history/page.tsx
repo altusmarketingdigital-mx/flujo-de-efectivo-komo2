@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import { Download, X, Edit2 } from 'lucide-react';
+import { Download, X, Edit2, Clock } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function HistoryPage() {
@@ -93,12 +93,12 @@ export default function HistoryPage() {
 
       <div className="px-6 mt-6">
         <div className="flex bg-slate-200/50 p-1 rounded-md mb-8">
-          {['ALL', 'INCOME', 'EXPENSE'].map(f => (
+          {['ALL', 'INCOME', 'EXPENSE', 'RECEIVABLE'].map(f => (
             <button 
               key={f} onClick={() => setFilter(f)}
-              className={`flex-1 py-2 text-[10px] font-bold uppercase tracking-widest transition-colors rounded ${filter === f ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              className={`flex-1 py-2 text-[8px] font-bold uppercase tracking-widest transition-colors rounded ${filter === f ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
             >
-              {f === 'ALL' ? 'General' : f === 'INCOME' ? 'Ingresos' : 'Gastos'}
+              {f === 'ALL' ? 'Todo' : f === 'INCOME' ? 'Ingresos' : f === 'EXPENSE' ? 'Gastos' : 'X Cobrar'}
             </button>
           ))}
         </div>
@@ -106,10 +106,12 @@ export default function HistoryPage() {
         <div className="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
           {transactions.map((t, idx) => {
             const isIncome = t.type === 'INCOME';
+            const isReceivable = t.type === 'RECEIVABLE';
             return (
               <div key={t.id} className={`flex justify-between items-center p-4 ${idx !== transactions.length - 1 ? 'border-b border-slate-100' : ''}`}>
                 <div className="flex-1">
                   <div className="flex items-center gap-2">
+                    {isReceivable && <Clock size={12} className="text-amber-500" strokeWidth={3} />}
                     <p className="font-semibold text-slate-900 text-sm">{t.concept}</p>
                     {t.frequency && t.frequency !== 'DIA' && <span className="text-[9px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded uppercase font-bold tracking-widest">{t.frequency}</span>}
                   </div>
@@ -118,8 +120,8 @@ export default function HistoryPage() {
                   </p>
                 </div>
                 <div className="text-right flex items-center gap-3">
-                  <p className={`font-medium ${isIncome ? 'text-emerald-600' : 'text-slate-900'}`}>
-                    {isIncome ? '+' : '-'}${Number(t.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                  <p className={`font-medium ${isIncome ? 'text-emerald-600' : isReceivable ? 'text-amber-600' : 'text-slate-900'}`}>
+                    {isIncome ? '+' : isReceivable ? '' : '-'}${Number(t.amount).toLocaleString('en-US', { minimumFractionDigits: 2 })}
                   </p>
                   <button onClick={() => {
                     setEditingTx({
@@ -158,8 +160,9 @@ export default function HistoryPage() {
             <form onSubmit={handleEditSubmit} className="p-6 overflow-y-auto space-y-5">
               
               <div className="flex bg-slate-200/50 p-1 rounded-md mb-4">
-                <button type="button" className={`flex-1 py-2 text-xs font-bold uppercase tracking-widest transition-colors rounded ${editingTx.type === 'EXPENSE' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`} onClick={() => setEditingTx({...editingTx, type: 'EXPENSE'})}>Egreso</button>
-                <button type="button" className={`flex-1 py-2 text-xs font-bold uppercase tracking-widest transition-colors rounded ${editingTx.type === 'INCOME' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`} onClick={() => setEditingTx({...editingTx, type: 'INCOME'})}>Ingreso</button>
+                <button type="button" className={`flex-1 py-2 text-[9px] font-bold uppercase tracking-widest transition-colors rounded ${editingTx.type === 'EXPENSE' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`} onClick={() => setEditingTx({...editingTx, type: 'EXPENSE'})}>Egreso</button>
+                <button type="button" className={`flex-1 py-2 text-[9px] font-bold uppercase tracking-widest transition-colors rounded ${editingTx.type === 'INCOME' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`} onClick={() => setEditingTx({...editingTx, type: 'INCOME'})}>Ingreso</button>
+                <button type="button" className={`flex-1 py-2 text-[9px] font-bold uppercase tracking-widest transition-colors rounded ${editingTx.type === 'RECEIVABLE' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`} onClick={() => setEditingTx({...editingTx, type: 'RECEIVABLE'})}>X Cobrar</button>
               </div>
 
               <div>

@@ -1,7 +1,9 @@
 'use client'
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import toast from 'react-hot-toast';
+import { Upload } from 'lucide-react';
+import * as XLSX from 'xlsx';
 
 export default function CapturePage() {
   const [type, setType] = useState<'EXPENSE' | 'INCOME' | 'RECEIVABLE'>('EXPENSE');
@@ -13,6 +15,7 @@ export default function CapturePage() {
   const [paymentMethod, setPaymentMethod] = useState('EFECTIVO');
   
   const [dbCategories, setDbCategories] = useState<any[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchCategories();
@@ -28,7 +31,6 @@ export default function CapturePage() {
     if (!amount || !concept || !category || !date) return toast.error("Información incompleta");
     
     const toastId = toast.loading('Procesando...');
-    
     const fullDate = new Date(date + 'T12:00:00Z').toISOString();
 
     const { error } = await supabase.from('transactions').insert([{
@@ -45,6 +47,63 @@ export default function CapturePage() {
       setFrequency('DIA');
       setDate(new Date().toISOString().split('T')[0]);
     }
+  };
+
+  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    const toastId = toast.loading("Leyendo archivo Excel...");
+    const reader = new FileReader();
+    
+    reader.onload = async (evt) => {
+      try {
+        const bstr = evt.target?.result;
+        const wb = XLSX.read(bstr, { type: 'binary' });
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+        const data = XLSX.utils.sheet_to_json(ws);
+        
+        if (data.length === 0) {
+          return toast.error("El archivo está vacío o no tiene el formato correcto", { id: toastId });
+        }
+
+        const formattedTxs = data.map((row: any) => {
+          let dateStr = row.Fecha || row.fecha || row.Date || row.date;
+          if (typeof dateStr === 'number') {
+            const excelEpoch = new Date(1899, 11, 30);
+            dateStr = new Date(excelEpoch.getTime() + dateStr * 86400000).toISOString();
+          } else {
+            const stringDate = dateStr || new Date().toISOString().split('T')[0];
+            dateStr = new Date(stringDate + (stringDate.includes('T') ? '' : 'T12:00:00Z')).toISOString();
+          }
+
+          // Force all imported records to be EXPENSE since we are in the expenses section
+          const parsedType = 'EXPENSE';
+
+          return {
+            type: parsedType,
+            amount: parseFloat(row.Monto || row.monto || row.Amount || row.amount) || 0,
+            concept: (row.Concepto || row.concepto || row.Concept || row.concept || 'Importación Masiva').toString(),
+            category: (row.Categoria || row.categoria || row.Category || row.category || 'General').toString(),
+            payment_method: (row.Metodo_Pago || row.Metodo || row.Payment || 'EFECTIVO').toString().toUpperCase(),
+            frequency: (row.Frecuencia || row.frecuencia || row.Frequency || 'DIA').toString().toUpperCase(),
+            date: dateStr
+          };
+        });
+
+        // Batch insert
+        const { error } = await supabase.from('transactions').insert(formattedTxs);
+        if (error) throw error;
+        
+        toast.success(`¡${formattedTxs.length} gastos importados con éxito!`, { id: toastId });
+      } catch (err: any) {
+        toast.error("Error procesando Excel: " + err.message, { id: toastId });
+      }
+      
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    };
+    reader.readAsBinaryString(file);
   };
 
   return (
@@ -78,8 +137,31 @@ export default function CapturePage() {
           </button>
         </div>
 
+        {/* BULK UPLOAD BUTTON - ONLY VISIBLE ON EXPENSES */}
+        {type === 'EXPENSE' && (
+          <div className="mb-6 bg-slate-100 rounded-xl p-4 border border-slate-200 flex justify-between items-center">
+            <div>
+              <p className="text-xs font-bold text-slate-800 uppercase tracking-widest mb-1">Carga Masiva</p>
+              <p className="text-[10px] text-slate-500">Sube múltiples gastos desde Excel</p>
+            </div>
+            <input 
+              type="file" 
+              accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" 
+              className="hidden" 
+              ref={fileInputRef} 
+              onChange={handleImport}
+            />
+            <button 
+              type="button"
+              onClick={() => fileInputRef.current?.click()} 
+              className="px-4 py-2 bg-slate-900 text-white rounded-lg text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 hover:bg-slate-800 transition-colors"
+            >
+              <Upload size={14} /> Subir Archivo
+            </button>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-6">
-          
           <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
             <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Monto de Operación</label>
             <div className="flex items-end text-3xl font-light text-slate-900 border-b border-slate-200 pb-2 focus-within:border-slate-900 transition-colors">

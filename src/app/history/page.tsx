@@ -1,15 +1,18 @@
 'use client'
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabaseClient';
-import { Download, X, Edit2, Clock } from 'lucide-react';
+import { Download, Upload, X, Edit2, Clock } from 'lucide-react';
 import toast from 'react-hot-toast';
+import * as XLSX from 'xlsx';
 
 export default function HistoryPage() {
   const [transactions, setTransactions] = useState<any[]>([]);
   const [filter, setFilter] = useState('ALL');
   const [dbCategories, setDbCategories] = useState<any[]>([]);
   const [editingTx, setEditingTx] = useState<any>(null);
+  
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchTransactions();
@@ -77,18 +80,94 @@ export default function HistoryPage() {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.setAttribute('href', url);
-    a.setAttribute('download', 'Reporte_Operaciones.csv');
+    a.setAttribute('download', 'Plantilla_Reporte_Operaciones.csv');
     a.click();
-    toast.success("Reporte exportado");
+    toast.success("Plantilla exportada");
+  };
+
+  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    const toastId = toast.loading("Leyendo archivo...");
+    const reader = new FileReader();
+    
+    reader.onload = async (evt) => {
+      try {
+        const bstr = evt.target?.result;
+        const wb = XLSX.read(bstr, { type: 'binary' });
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+        const data = XLSX.utils.sheet_to_json(ws);
+        
+        if (data.length === 0) {
+          return toast.error("El archivo está vacío o no tiene el formato correcto", { id: toastId });
+        }
+
+        const formattedTxs = data.map((row: any) => {
+          let dateStr = row.Fecha || row.fecha || row.Date || row.date;
+          if (typeof dateStr === 'number') {
+            const excelEpoch = new Date(1899, 11, 30);
+            dateStr = new Date(excelEpoch.getTime() + dateStr * 86400000).toISOString();
+          } else {
+            const stringDate = dateStr || new Date().toISOString().split('T')[0];
+            // Format to ensure compatibility
+            dateStr = new Date(stringDate + (stringDate.includes('T') ? '' : 'T12:00:00Z')).toISOString();
+          }
+
+          let rawType = (row.Tipo || row.tipo || row.Type || row.type || 'EXPENSE').toString().toUpperCase();
+          let parsedType = 'EXPENSE';
+          if (rawType.includes('INCOME') || rawType.includes('INGRESO')) parsedType = 'INCOME';
+          if (rawType.includes('RECEIVABLE') || rawType.includes('COBRAR')) parsedType = 'RECEIVABLE';
+
+          return {
+            type: parsedType,
+            amount: parseFloat(row.Monto || row.monto || row.Amount || row.amount) || 0,
+            concept: (row.Concepto || row.concepto || row.Concept || row.concept || 'Importación Masiva').toString(),
+            category: (row.Categoria || row.categoria || row.Category || row.category || 'General').toString(),
+            payment_method: (row.Metodo_Pago || row.Metodo || row.Payment || 'EFECTIVO').toString().toUpperCase(),
+            frequency: (row.Frecuencia || row.frecuencia || row.Frequency || 'DIA').toString().toUpperCase(),
+            date: dateStr
+          };
+        });
+
+        // Batch insert
+        const { error } = await supabase.from('transactions').insert(formattedTxs);
+        if (error) throw error;
+        
+        toast.success(`¡${formattedTxs.length} registros cargados con éxito!`, { id: toastId });
+        fetchTransactions();
+      } catch (err: any) {
+        toast.error("Error procesando Excel: " + err.message, { id: toastId });
+      }
+      
+      // Reset input so they can upload the same file again if needed
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    };
+    reader.readAsBinaryString(file);
   };
 
   return (
     <div className="min-h-screen bg-slate-50 pb-24">
       <div className="bg-white border-b border-slate-200 px-6 py-6 flex justify-between items-center">
         <h1 className="text-lg font-bold text-slate-900 uppercase tracking-widest">Libro Mayor</h1>
-        <button onClick={exportCSV} className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1 hover:text-slate-900 transition-colors">
-          <Download size={14} strokeWidth={2.5} /> Exportar
-        </button>
+        
+        <div className="flex gap-4">
+          <input 
+            type="file" 
+            accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" 
+            className="hidden" 
+            ref={fileInputRef} 
+            onChange={handleImport}
+          />
+          <button onClick={() => fileInputRef.current?.click()} className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1 hover:text-emerald-600 transition-colors">
+            <Upload size={14} strokeWidth={2.5} /> Subir
+          </button>
+          
+          <button onClick={exportCSV} className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1 hover:text-slate-900 transition-colors">
+            <Download size={14} strokeWidth={2.5} /> Bajar
+          </button>
+        </div>
       </div>
 
       <div className="px-6 mt-6">

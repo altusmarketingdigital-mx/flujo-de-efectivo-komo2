@@ -73,14 +73,43 @@ export default function CapturePage() {
 
         const formattedTxs = data.map((row: any) => {
           let dateStr = row.Fecha || row.fecha || row.Date || row.date;
+          let parsedDate;
+
           if (typeof dateStr === 'number') {
             const excelEpoch = new Date(1899, 11, 30);
-            dateStr = new Date(excelEpoch.getTime() + dateStr * 86400000).toISOString();
+            parsedDate = new Date(excelEpoch.getTime() + dateStr * 86400000);
           } else {
-            const stringDate = dateStr || new Date().toISOString().split('T')[0];
-            dateStr = new Date(stringDate + (stringDate.includes('T') ? '' : 'T12:00:00Z')).toISOString();
+            const stringDate = String(dateStr || new Date().toISOString().split('T')[0]).trim();
+            // Si ya viene con formato ISO o asimilable
+            parsedDate = new Date(stringDate + (stringDate.includes('T') ? '' : 'T12:00:00Z'));
+            
+            // Si el Date nativo falló, intentamos parsear formato DD/MM/YYYY o DD-MM-YYYY
+            if (isNaN(parsedDate.getTime())) {
+              const parts = stringDate.split(/[\/\-]/);
+              if (parts.length === 3) {
+                // Asumimos formato latinoamericano DD/MM/YYYY
+                let day = parts[0];
+                let month = parts[1];
+                let year = parts[2];
+                
+                // Si el año viene al principio (YYYY/MM/DD)
+                if (parts[0].length === 4) {
+                  year = parts[0];
+                  month = parts[1];
+                  day = parts[2];
+                }
+                
+                parsedDate = new Date(`${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T12:00:00Z`);
+              }
+            }
           }
 
+          // Si de plano fue imposible parsear la fecha, usamos la fecha de hoy
+          if (isNaN(parsedDate.getTime())) {
+            parsedDate = new Date();
+          }
+
+          const finalIsoDate = parsedDate.toISOString();
           const parsedType = 'EXPENSE';
 
           return {
@@ -90,7 +119,7 @@ export default function CapturePage() {
             category: (row.Categoria || row.categoria || row.Category || row.category || 'General').toString(),
             payment_method: (row.Metodo_Pago || row.Metodo || row.Payment || 'EFECTIVO').toString().toUpperCase(),
             frequency: (row.Frecuencia || row.frecuencia || row.Frequency || 'DIA').toString().toUpperCase(),
-            date: dateStr
+            date: finalIsoDate
           };
         });
 
